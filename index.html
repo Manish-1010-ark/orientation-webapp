@@ -79,414 +79,44 @@
             <div class="button-group">
                 <button class="btn btn-success" id="timer-start" onclick="startTimer()">Start</button>
                 <button class="btn btn-warning" id="timer-pause" onclick="pauseTimer()" disabled>Pause</button>
-                <button class="btn btn-danger" onclick="resetTimer()">Reset</button>
+                <button class="btn btn-danger" id="timer-reset" onclick="resetTimer()" disabled>Reset</button>
             </div>
         </div>
-
+        
         <!-- ==================== WEATHER MODE (Landscape Left) ==================== -->
         <div id="weather-section" class="section">
-          <div class="display-area">
-            <div class="status-text">Weather of the Day</div>
-            <div class="weather-display">
-              <div class="weather-info">
-                <div class="weather-temp" id="weather-temp">--°C</div>
-                <div class="weather-condition" id="weather-condition">Loading...</div>
-                <div class="weather-details" id="weather-details">Fetching weather data...</div>
-              </div>
-              <div class="weather-icon" id="weather-icon">🌤️</div>
+            <div class="display-area">
+                <div class="status-text">Weather of the Day</div>
+                <div class="weather-display">
+                    <div class="weather-info">
+                        <div class="weather-temp" id="weather-temp">--°C</div>
+                        <div class="weather-condition" id="weather-condition">Loading...</div>
+                        <div class="weather-details" id="weather-details">Fetching weather data...</div>
+                    </div>
+                    <div class="weather-icon" id="weather-icon">🌤️</div>
+                </div>
             </div>
-          </div>
-        
-          <div class="input-group">
-            <input
-              type="text"
-              class="city-input"
-              id="city-input"
-              placeholder="Enter city name"
-              value="Delhi"
-              autocomplete="off"
-            >
-          </div>
-          <!-- suggestion dropdown -->
-          <ul id="city-suggestions" class="suggestions-list"></ul>
-        
-          <div class="button-group">
-            <button class="btn btn-primary" id="fetch-weather-btn">Get Weather</button>
-            <button class="btn btn-primary" id="auto-locate-btn">Auto Locate</button>
-          </div>
-        
-          <!-- Weather details container -->
-          <div id="weather" style="margin-top: 1rem;"></div>
-        </div>
-
-    </div>
-
-    <!-- Link to external JavaScript file -->
-    <script src="script.js"></script>
-    
-    <!-- Inline JavaScript for app initialization and orientation handling -->
-    <script>
-    // ==================== ORIENTATION-BASED APP LOGIC ==================== 
-    let currentOrientation = 'portrait-primary';
-    let orientationTimeout = null;
-
-    // Map orientations to sections
-    const orientationMap = {
-        'portrait-primary': 'alarm-section',       // Portrait upright → Alarm
-        'landscape-primary': 'stopwatch-section',  // Landscape right → Stopwatch  
-        'portrait-secondary': 'timer-section',     // Portrait upside down → Timer
-        'landscape-secondary': 'weather-section'   // Landscape left → Weather
-    };
-
-    /**
-     * Initialize the app when DOM is loaded
-     */
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('🚀 Orientation Clock App Initialized');
-        
-        // Initialize all clock functions
-        initializeApp();
-        
-        // Set initial orientation
-        detectOrientation();
-        
-        // Add orientation change listeners
-        setupOrientationListeners();
-        
-        // Start the main clock update loop
-        startClockUpdates();
-        
-        // Initialize touch handling for buttons
-        initializeTouchHandling();
-
-        // ADDED: Event listener for the 'Get Weather' button
-        const fetchWeatherBtn = document.getElementById('fetch-weather-btn');
-        if (fetchWeatherBtn) {
-            fetchWeatherBtn.addEventListener('click', fetchCurrentWeather);
-        }
-    });
-
-    /**
-     * Initialize all app components
-     */
-    function initializeApp() {
-        // Initialize displays
-        updateCurrentTime();
-        updateStopwatchDisplay();
-        updateTimerDisplay();
-        
-        // Hide all sections initially
-        document.querySelectorAll('.section').forEach(section => {
-            section.classList.remove('active');
-        });
-        
-        console.log('✅ App components initialized');
-    }
-
-    /**
-     * Setup orientation change listeners
-     */
-    function setupOrientationListeners() {
-        // Modern orientation API
-        if (screen && screen.orientation) {
-            screen.orientation.addEventListener('change', handleOrientationChange);
-        }
-        
-        // Fallback for older browsers
-        window.addEventListener('orientationchange', handleOrientationChange);
-        
-        // Additional fallback using resize
-        window.addEventListener('resize', debounceOrientationCheck);
-        
-        console.log('📱 Orientation listeners setup complete');
-    }
-
-    /**
-     * Handle orientation changes with debouncing
-     */
-    function handleOrientationChange() {
-        // Clear any existing timeout
-        if (orientationTimeout) {
-            clearTimeout(orientationTimeout);
-        }
-        
-        // Debounce orientation changes to avoid rapid switching
-        orientationTimeout = setTimeout(() => {
-            detectOrientation();
-        }, 100);
-    }
-
-    /**
-     * Debounced orientation check for resize events
-     */
-    function debounceOrientationCheck() {
-        if (orientationTimeout) {
-            clearTimeout(orientationTimeout);
-        }
-        
-        orientationTimeout = setTimeout(() => {
-            detectOrientation();
-        }, 200);
-    }
-
-    /**
-     * Detect current device orientation and switch sections
-     */
-    function detectOrientation() {
-        let newOrientation = 'portrait-primary';
-        
-        // Try modern Screen Orientation API first
-        if (screen && screen.orientation) {
-            newOrientation = screen.orientation.type;
-        }
-        // Fallback to window.orientation
-        else if (typeof window.orientation !== 'undefined') {
-            switch (window.orientation) {
-                case 0:
-                    newOrientation = 'portrait-primary';
-                    break;
-                case 90:
-                    newOrientation = 'landscape-primary';
-                    break;
-                case 180:
-                    newOrientation = 'portrait-secondary';
-                    break;
-                case -90:
-                case 270:
-                    newOrientation = 'landscape-secondary';
-                    break;
-            }
-        }
-        // Final fallback using window dimensions
-        else {
-            const width = window.innerWidth;
-            const height = window.innerHeight;
-            newOrientation = width > height ? 'landscape-primary' : 'portrait-primary';
-        }
-        
-        // Only switch if orientation actually changed
-        if (newOrientation !== currentOrientation) {
-            console.log(`🔄 Orientation changed: ${currentOrientation} → ${newOrientation}`);
-            currentOrientation = newOrientation;
-            switchToSection(orientationMap[currentOrientation]);
-            updateOrientationDebug();
-        }
-    }
-
-    /**
-     * Switch to the appropriate section based on orientation
-     * @param {string} sectionId - ID of the section to show
-     */
-    function switchToSection(sectionId) {
-        // Hide all sections
-        document.querySelectorAll('.section').forEach(section => {
-            section.classList.remove('active');
-        });
-        
-        // Show the target section
-        const targetSection = document.getElementById(sectionId);
-        if (targetSection) {
-            targetSection.classList.add('active');
             
-            // Initialize section-specific functionality
-            initializeSectionFeatures(sectionId);
-            
-            console.log(`✨ Switched to: ${sectionId}`);
-        }
-    }
-
-    /**
-     * Initialize features specific to each section
-     * @param {string} sectionId - ID of the active section
-     */
-    function initializeSectionFeatures(sectionId) {
-        switch (sectionId) {
-            case 'alarm-section':
-                // Ensure current time is updating
-                updateCurrentTime();
-                break;
-                
-            case 'stopwatch-section':
-                // Update stopwatch display
-                updateStopwatchDisplay();
-                break;
-                
-            case 'timer-section':
-                // Update timer display
-                updateTimerDisplay();
-                break;
-                
-            case 'weather-section':
-                // No action is needed here anymore.
-                // Weather fetching is now handled exclusively by user button clicks.
-                break;
-        }
-    }
-
-    /**
-     * Update orientation debug display
-     */
-    function updateOrientationDebug() {
-        const debugElement = document.getElementById('current-orientation');
-        const sectionName = {
-            'alarm-section': 'Alarm Clock (Portrait ↑)',
-            'stopwatch-section': 'Stopwatch (Landscape →)',
-            'timer-section': 'Timer (Portrait ↓)',
-            'weather-section': 'Weather (Landscape ←)'
-        };
-        
-        if (debugElement) {
-            const currentSection = orientationMap[currentOrientation];
-            debugElement.textContent = sectionName[currentSection] || currentOrientation;
-        }
-    }
-
-    /**
-     * Start the main clock update loop
-     */
-    function startClockUpdates() {
-        // Update every second
-        setInterval(() => {
-            // Always update time, not just in portrait mode
-            updateCurrentTime();
-        }, 1000);
-        
-        console.log('⏰ Clock updates started');
-    }
-
-    // REMOVED geolocation: The getCurrentLocation function was removed from here.
-    
-    // REMOVED geolocation: The fetchWeatherByCoordinates function was removed from here.
-
-    /**
-     * Fetch weather for the city entered in input
-     */
-    function fetchCurrentWeather() {
-        const cityInput = document.getElementById('city-input');
-        const cityName = cityInput.value.trim();
-        
-        if (!cityName) {
-            document.getElementById('weather-condition').textContent = 'Please enter a city name';
-            return;
-        }
-        
-        // Use the weather API from script.js
-        if (typeof window.fetchWeather === 'function') {
-            window.fetchWeather(cityName);
-        } else {
-            // Fallback to mock weather if main script isn't loaded
-            displayMockWeather(cityName);
-        }
-    }
-
-    /**
-     * Display mock weather data when API is not available
-     * @param {string} cityName - Name of the city
-     */
-    function displayMockWeather(cityName) {
-        document.getElementById('weather-temp').textContent = '28°C';
-        document.getElementById('weather-condition').textContent = 'Clear Sky';
-        document.getElementById('weather-details').textContent = `${cityName} • Feels like 32°C • Humidity 65%`;
-        document.getElementById('weather-icon').textContent = '☀️';
-        
-        const weatherDiv = document.getElementById('weather');
-        if (weatherDiv) {
-            weatherDiv.innerHTML = `
-                <div style="text-align: center; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 0.75rem; border: 1px solid rgba(255,255,255,0.1);">
-                    <p style="color: rgba(255,255,255,0.7); margin: 0;">
-                        <strong>Mock Weather Data</strong><br>
-                        Replace API_KEY in script.js with your OpenWeatherMap key for real data
+            <div id="weather" class="weather-card-container">
+                <div style="background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 0.75rem; border: 1px solid rgba(255,255,255,0.1);">
+                    <p style="text-align: center; color: rgba(255,255,255,0.7); margin: 0;">
+                        Initializing weather data...
                     </p>
                 </div>
-            `;
-        }
-    }
-
-
-        // ==================== IMPROVED TOUCH HANDLING ==================== 
-        /**
-         * Initialize touch handling for better mobile experience
-         */
-        function initializeTouchHandling() {
-            // Add active state handling for all buttons
-            document.querySelectorAll('.btn').forEach(button => {
-                button.addEventListener('touchstart', function(e) {
-                    this.style.transform = 'translateY(1px) scale(0.98)';
-                    this.style.transition = 'transform 0.1s ease';
-                }, { passive: true });
-                
-                button.addEventListener('touchend', function(e) {
-                    setTimeout(() => {
-                        this.style.transform = '';
-                        this.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-                    }, 150);
-                }, { passive: true });
-                
-                button.addEventListener('touchcancel', function(e) {
-                    this.style.transform = '';
-                    this.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
-                }, { passive: true });
-            });
-
-            const toggleSwitch = document.getElementById('alarm-toggle');
-            if (toggleSwitch) {
-                toggleSwitch.addEventListener('touchstart', function(e) {
-                    this.style.transform = 'scale(0.95)';
-                }, { passive: true });
-                
-                toggleSwitch.addEventListener('touchend', function(e) {
-                    setTimeout(() => {
-                        this.style.transform = '';
-                    }, 150);
-                }, { passive: true });
-            }
-
-            console.log('👆 Touch handling initialized');
-        }
-
-        document.addEventListener('touchmove', function(e) {
-            if (e.target === document.body || e.target.classList.contains('app-container')) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-
-        document.addEventListener('gesturestart', function(e) {
-            if (e.scale !== 1) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-
-        document.addEventListener('gesturechange', function(e) {
-            if (e.scale !== 1) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-
-        document.addEventListener('gestureend', function(e) {
-            if (e.scale !== 1) {
-                e.preventDefault();
-            }
-        }, { passive: false });
-
-        let lastTouchEnd = 0;
-        document.addEventListener('touchend', function(e) {
-            const now = (new Date()).getTime();
-            if (now - lastTouchEnd <= 300) {
-                e.preventDefault();
-            }
-            lastTouchEnd = now;
-        }, { passive: false });
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const inputs = document.querySelectorAll('input');
-            inputs.forEach(input => {
-                input.addEventListener('focus', function() {
-                    setTimeout(() => {
-                        this.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }, 300);
-                });
-            });
-        });
-    </script>
+            </div>
+            
+            <div class="input-group">
+                <input type="text" class="city-input" id="city-input" placeholder="Enter city name" value="Delhi" autocomplete="off">
+            </div>
+            
+            <div class="button-group">
+                <button class="btn btn-primary" id="fetch-weather-btn">Get Weather</button>
+                <button class="btn btn-warning" id="auto-locate-btn">Auto Locate</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Link to the consolidated JavaScript file -->
+    <script src="script.js"></script>
 </body>
 </html>
