@@ -27,8 +27,8 @@ let currentWeatherData = null;
 // Get your free API key from: https://openweathermap.org/api
 
 // TODO: Replace with your actual OpenWeatherMap API key
-const API_KEY = 'your_api_key_here';
-const BASE_URL = 'https://api.openweathermap.org/data/2.5/weather';
+const API_KEY   = 'd7ec5ec49c18e556850dec352cef4e62';
+const BASE_URL  = 'https://api.openweathermap.org/data/2.5/weather';
 
 /**
  * Fetches and displays current weather for a given city
@@ -42,97 +42,86 @@ async function fetchWeather(cityName) {
         return null;
     }
 
-    // Check if API key is set
+    // Check if API key is placeholder
     if (API_KEY === 'your_api_key_here') {
         console.warn('OpenWeatherMap API key not set, using mock data');
         displayMockWeatherData(cityName);
         return null;
     }
 
-    // Check rate limiting (max 1 request per 10 seconds)
+    // Rate-limit: max 1 request per 10 seconds
     const now = Date.now();
     if (now - lastWeatherFetch < 10000) {
         displayWeatherError('Please wait before fetching weather again');
         return null;
     }
+    lastWeatherFetch = now;
 
     // Show loading state
     displayWeatherLoading();
-    lastWeatherFetch = now;
 
     try {
-        // Construct API URL
+        // Build URL with metric units
         const url = `${BASE_URL}?q=${encodeURIComponent(cityName)}&appid=${API_KEY}&units=metric`;
         
-        // Fetch weather data with timeout
+        // Fetch with 10s timeout
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-        
-        const response = await fetch(url, {
+        const timeoutId  = setTimeout(() => controller.abort(), 10000);
+        const response   = await fetch(url, {
             signal: controller.signal,
-            headers: {
-                'Accept': 'application/json',
-            }
+            headers: { 'Accept': 'application/json' }
         });
-        
         clearTimeout(timeoutId);
-        
-        // Check if response is ok
+
+        // HTTP error handling
         if (!response.ok) {
-            if (response.status === 404) {
-                throw new Error('City not found. Please check the spelling.');
-            } else if (response.status === 401) {
-                throw new Error('Invalid API key. Please check your OpenWeatherMap API key.');
-            } else if (response.status === 429) {
-                throw new Error('API rate limit exceeded. Please try again later.');
-            } else {
-                throw new Error(`Weather service error: ${response.status}`);
+            switch (response.status) {
+                case 401: throw new Error('Invalid API key. Please check your OpenWeatherMap API key.');
+                case 404: throw new Error('City not found. Please check the spelling.');
+                case 429: throw new Error('API rate limit exceeded. Please try again later.');
+                default:  throw new Error(`Weather service error: ${response.status}`);
             }
         }
 
-        // Parse JSON response
+        // Parse JSON
         const weatherData = await response.json();
-        
-        // Extract and process relevant data
+
+        // Process into simpler object
         const processedData = {
-            city: weatherData.name,
-            country: weatherData.sys.country,
+            city:        weatherData.name,
+            country:     weatherData.sys.country,
             temperature: Math.round(weatherData.main.temp),
-            feelsLike: Math.round(weatherData.main.feels_like),
-            condition: weatherData.weather[0].main,
+            feelsLike:   Math.round(weatherData.main.feels_like),
+            condition:   weatherData.weather[0].main,
             description: weatherData.weather[0].description,
-            icon: weatherData.weather[0].icon,
-            humidity: weatherData.main.humidity,
-            windSpeed: weatherData.wind ? Math.round(weatherData.wind.speed * 10) / 10 : 0,
-            pressure: weatherData.main.pressure,
-            visibility: weatherData.visibility ? Math.round(weatherData.visibility / 1000) : 'N/A',
-            timestamp: new Date().toLocaleTimeString()
+            icon:        weatherData.weather[0].icon,
+            humidity:    weatherData.main.humidity,
+            windSpeed:   weatherData.wind ? Math.round(weatherData.wind.speed * 10) / 10 : 0,
+            pressure:    weatherData.main.pressure,
+            visibility:  weatherData.visibility ? Math.round(weatherData.visibility / 1000) : 'N/A',
+            timestamp:   new Date().toLocaleTimeString()
         };
 
-        // Store current weather data
-        currentWeatherData = processedData;
-        
-        // Display weather data
+        // Display on the page
         displayWeatherData(processedData);
-        
         console.log('✅ Weather data fetched successfully:', processedData);
         return processedData;
 
     } catch (error) {
         console.error('❌ Weather fetch error:', error);
-        
-        // Handle different types of errors
+
+        // Handle timeout or network errors
         if (error.name === 'AbortError') {
             displayWeatherError('Request timed out. Please try again.');
-        } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        } else if (error.name === 'TypeError') {
             displayWeatherError('Network error. Please check your internet connection.');
         } else {
             displayWeatherError(error.message);
         }
-        
         return null;
     }
 }
+
 /**
  * Fetches weather by coordinates (for geolocation)
  * @param {number} lat - Latitude
@@ -201,78 +190,75 @@ async function fetchWeatherByCoordinates(lat, lon) {
  * @param {Object} data - Processed weather data
  */
 function displayWeatherData(data) {
-    // Update main weather display
-    const tempElement = document.getElementById('weather-temp');
-    const conditionElement = document.getElementById('weather-condition');
-    const detailsElement = document.getElementById('weather-details');
-    const iconElement = document.getElementById('weather-icon');
-    
-    if (tempElement) tempElement.textContent = `${data.temperature}°C`;
-    if (conditionElement) conditionElement.textContent = data.condition;
-    if (detailsElement) {
-        detailsElement.textContent = `${data.city}, ${data.country} • Feels like ${data.feelsLike}°C • Humidity ${data.humidity}%`;
-    }
-    if (iconElement) {
-        // Map weather conditions to emojis
-        const weatherEmojis = {
-            'Clear': '☀️',
-            'Clouds': '☁️',
-            'Rain': '🌧️',
-            'Drizzle': '🌦️',
-            'Thunderstorm': '⛈️',
-            'Snow': '🌨️',
-            'Mist': '🌫️',
-            'Fog': '🌫️',
-            'Haze': '🌫️',
-            'Dust': '💨',
-            'Sand': '💨',
-            'Ash': '💨',
-            'Squall': '💨',
-            'Tornado': '🌪️'
-        };
-        iconElement.textContent = weatherEmojis[data.condition] || '🌤️';
-    }
-    
-    // Update detailed weather info
+    // Call this once when your weather section is first shown:
+    requestGeolocationPermission();
+
+    // Define emojis here so both small and large icons can use them
+    const weatherEmojis = {
+        'Clear':       '☀️',
+        'Clouds':      '☁️',
+        'Rain':        '🌧️',
+        'Drizzle':     '🌦️',
+        'Thunderstorm':'⛈️',
+        'Snow':        '🌨️',
+        'Mist':        '🌫️',
+        'Fog':         '🌫️',
+        'Haze':        '🌫️',
+        'Dust':        '💨',
+        'Sand':        '💨',
+        'Ash':         '💨',
+        'Squall':      '💨',
+        'Tornado':     '🌪️'
+    };
+
+    // Update small display elements
+    const tempEl      = document.getElementById('weather-temp');
+    const condEl      = document.getElementById('weather-condition');
+    const detailsEl   = document.getElementById('weather-details');
+    const iconEl      = document.getElementById('weather-icon');
+
+    if (tempEl)    tempEl.textContent    = `${data.temperature}°C`;
+    if (condEl)    condEl.textContent    = data.condition;
+    if (detailsEl) detailsEl.textContent = `${data.city}, ${data.country} • Feels like ${data.feelsLike}°C • Humidity ${data.humidity}%`;
+    if (iconEl)    iconEl.textContent    = weatherEmojis[data.condition] || '🌤️';
+
+    // Build full weather card
     const weatherDiv = document.getElementById('weather');
     if (weatherDiv) {
         weatherDiv.innerHTML = `
             <div class="weather-card">
-                <div class="weather-header">
-                    <h3 style="margin: 0 0 0.5rem 0; color: #fff; font-size: 1.25rem;">${data.city}, ${data.country}</h3>
-                    <p style="color: rgba(255,255,255,0.7); font-size: 0.875rem; margin: 0;">Updated: ${data.timestamp}</p>
+              <div class="weather-header">
+                <h3>${data.city}, ${data.country}</h3>
+                <p>Updated: ${data.timestamp}</p>
+              </div>
+              <div class="weather-main">
+                <div class="temperature-info">
+                  <div class="temp-value">${data.temperature}°C</div>
+                  <div class="feels-like">Feels like ${data.feelsLike}°C</div>
+                  <div class="description">${data.description}</div>
                 </div>
-                
-                <div class="weather-main" style="display: flex; justify-content: space-between; align-items: center; margin: 1rem 0;">
-                    <div class="temperature-info">
-                        <div style="font-size: 2rem; font-weight: bold; color: #fff; margin-bottom: 0.25rem;">${data.temperature}°C</div>
-                        <div style="color: rgba(255,255,255,0.7); font-size: 0.875rem;">Feels like ${data.feelsLike}°C</div>
-                        <div style="color: rgba(255,255,255,0.8); font-size: 1rem; text-transform: capitalize; margin-top: 0.25rem;">${data.description}</div>
-                    </div>
-                    
-                    <div class="weather-icon-large" style="font-size: 3rem;">
-                        ${weatherEmojis[data.condition] || '🌤️'}
-                    </div>
+                <div class="weather-icon-large">
+                  ${weatherEmojis[data.condition] || '🌤️'}
                 </div>
-                
-                <div class="weather-details-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
-                    <div class="detail-item" style="background: rgba(255,255,255,0.05); padding: 0.75rem; border-radius: 0.5rem;">
-                        <div style="color: rgba(255,255,255,0.7); font-size: 0.875rem;">Humidity</div>
-                        <div style="color: #fff; font-weight: bold; font-size: 1.125rem;">${data.humidity}%</div>
-                    </div>
-                    <div class="detail-item" style="background: rgba(255,255,255,0.05); padding: 0.75rem; border-radius: 0.5rem;">
-                        <div style="color: rgba(255,255,255,0.7); font-size: 0.875rem;">Wind Speed</div>
-                        <div style="color: #fff; font-weight: bold; font-size: 1.125rem;">${data.windSpeed} m/s</div>
-                    </div>
-                    <div class="detail-item" style="background: rgba(255,255,255,0.05); padding: 0.75rem; border-radius: 0.5rem;">
-                        <div style="color: rgba(255,255,255,0.7); font-size: 0.875rem;">Pressure</div>
-                        <div style="color: #fff; font-weight: bold; font-size: 1.125rem;">${data.pressure} hPa</div>
-                    </div>
-                    <div class="detail-item" style="background: rgba(255,255,255,0.05); padding: 0.75rem; border-radius: 0.5rem;">
-                        <div style="color: rgba(255,255,255,0.7); font-size: 0.875rem;">Visibility</div>
-                        <div style="color: #fff; font-weight: bold; font-size: 1.125rem;">${data.visibility} km</div>
-                    </div>
+              </div>
+              <div class="weather-details-grid">
+                <div class="detail-item">
+                  <div>Humidity</div>
+                  <div>${data.humidity}%</div>
                 </div>
+                <div class="detail-item">
+                  <div>Wind Speed</div>
+                  <div>${data.windSpeed} m/s</div>
+                </div>
+                <div class="detail-item">
+                  <div>Pressure</div>
+                  <div>${data.pressure} hPa</div>
+                </div>
+                <div class="detail-item">
+                  <div>Visibility</div>
+                  <div>${data.visibility} km</div>
+                </div>
+              </div>
             </div>
         `;
     }
@@ -963,6 +949,87 @@ function initializeClockApp() {
     console.log('✅ Clock app initialization complete');
 }
 
+// ==================== GEO-PERMISSION & AUTO-LOCATE HANDLER ====================
+
+/**
+ * Request Geolocation permission by making a silent getCurrentPosition call.
+ * If the Permissions API is available, it checks state and only prompts if needed.
+ */
+function requestGeolocationPermission() {
+  if (!navigator.geolocation) {
+    console.warn('Geolocation not supported by this browser.');
+    return;
+  }
+
+  const tryPrompt = (timeout = 1000) => {
+    navigator.geolocation.getCurrentPosition(
+      () => console.log('📍 Geolocation permission granted.'),
+      (err) => console.log('📍 Geolocation permission denied or error:', err),
+      { timeout }
+    );
+  };
+
+  if (navigator.permissions) {
+    navigator.permissions
+      .query({ name: 'geolocation' })
+      .then(status => {
+        if (status.state === 'prompt') {
+          tryPrompt();
+        } else {
+          console.log(`📍 Geolocation permission already ${status.state}.`);
+        }
+      })
+      .catch(err => {
+        console.warn('Permissions API error:', err);
+        tryPrompt();
+      });
+  } else {
+    // Fallback: directly prompt
+    tryPrompt();
+  }
+}
+
+/**
+ * Handles click on “Auto Locate” button.
+ * Checks permission state, then fetches weather by coordinates.
+ */
+document.getElementById('auto-locate-btn')?.addEventListener('click', () => {
+  if (!navigator.geolocation) {
+    displayWeatherError('Geolocation is not supported by your browser.');
+    return;
+  }
+
+  const doLocate = () => {
+    displayWeatherLoading();
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => fetchWeatherByCoordinates(coords.latitude, coords.longitude),
+      (err) => {
+        console.error('Geolocation error:', err);
+        const msg = (err.code === err.PERMISSION_DENIED)
+          ? 'Location permission denied.'
+          : 'Unable to retrieve your location.';
+        displayWeatherError(msg);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
+  if (navigator.permissions) {
+    navigator.permissions.query({ name: 'geolocation' }).then(status => {
+      if (status.state === 'granted' || status.state === 'prompt') {
+        doLocate();
+      } else {
+        displayWeatherError(
+          'Location permission has been denied. Please enable it in your browser settings.'
+        );
+      }
+    });
+  } else {
+    // Fallback if Permissions API not supported
+    doLocate();
+  }
+});
+
 /**
  * Setup input validation for time inputs
  */
@@ -1025,52 +1092,6 @@ function setupInputValidation() {
             }
         });
     }
-}
-
-// ==================== NEW: WEATHER INPUT HANDLERS ====================
-function setupWeatherInputHandlers() {
-    const cityInput = document.getElementById('city-input');
-    const fetchButton = document.getElementById('fetch-weather-btn');
-    
-    if (cityInput) {
-        // Input event for autocomplete
-        cityInput.addEventListener('input', (e) => {
-            const query = e.target.value.trim();
-            searchCities(query);             // you’ll supply this
-        });
-        
-        // Keyboard navigation for suggestions
-        cityInput.addEventListener('keydown', handleSuggestionKeyboard);  // supply this
-        
-        // Enter key to fetch weather
-        cityInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                fetchCurrentWeather();
-            }
-        });
-        
-        // Show suggestions on focus
-        cityInput.addEventListener('focus', () => {
-            if (cityInput.value.trim().length >= 2) {
-                searchCities(cityInput.value.trim());
-            }
-        });
-        
-        // Hide on blur (after click)
-        cityInput.addEventListener('blur', () => {
-            setTimeout(hideCitySuggestions, 200);  // supply this
-        });
-    }
-    
-    // Click outside to hide suggestions
-    document.addEventListener('click', (e) => {
-        const container = document.querySelector('#weather-section');
-        if (container && !container.contains(e.target)) {
-            hideCitySuggestions();
-        }
-    });
-    
-    console.log('🌤️ Weather input handlers setup complete');
 }
 
 // ==================== WEATHER HELPER FUNCTIONS ==================== 
