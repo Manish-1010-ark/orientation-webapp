@@ -914,36 +914,6 @@ function preventDefaultTouchBehaviors() {
 }
 
 /**
- * Initialize app components and event listeners.
- */
-function initializeClockApp() {
-    console.log('🚀 Clock app components initialized');
-    
-    // Initialize displays
-    updateCurrentTime();
-    updateStopwatchDisplay();
-    updateTimerDisplay();
-    
-    // Request notification permission
-    requestNotificationPermission();
-    
-    // Setup mobile optimizations
-    preventDefaultTouchBehaviors();
-    
-    // Setup input validation
-    setupInputValidation();
-
-    // FIX: Removed the old, complex event listener from the bottom of the file.
-    // Attach the new, clean handler directly to the button on initialization.
-    const autoLocateBtn = document.getElementById('auto-locate-btn');
-    if (autoLocateBtn) {
-        autoLocateBtn.addEventListener('click', handleAutoLocate);
-    }
-    
-    console.log('✅ Clock app initialization complete');
-}
-
-/**
  * Handles the click on the "Auto Locate" button.
  * This function is now the single point of entry for geolocation.
  */
@@ -1118,6 +1088,88 @@ function refreshWeatherIfNeeded() {
 }
 
 // ==================== AUTO INITIALIZATION ==================== 
+// New function to handle the geolocation request for weather
+function autoLocateWeatherOnLoad() {
+  console.log('🌍 Attempting to auto-locate weather...');
+  // Check if the current mode is 'weather' and then call the auto-locate function
+  // to fetch weather based on the user's location.
+  if (currentMode === 'weather') {
+    requestGeolocationPermission();
+  }
+}
+
+/**
+ * Handle screen orientation changes
+ */
+function handleOrientationChange() {
+    // A small delay helps prevent rapid re-runs during device movement
+    clearTimeout(orientationTimeout);
+    orientationTimeout = setTimeout(() => {
+        const orientation = screen.orientation.type;
+        currentOrientation = orientation;
+        const targetSectionId = orientationMap[orientation];
+
+        // Hide all sections, then show the correct one
+        document.querySelectorAll('.section').forEach(section => {
+            section.style.display = 'none';
+        });
+
+        const targetSection = document.getElementById(targetSectionId);
+        if (targetSection) {
+            targetSection.style.display = 'flex';
+            currentMode = targetSection.id.replace('-section', '');
+            console.log('✅ Current mode:', currentMode);
+        }
+
+        // Update the orientation debug display
+        const orientationDebug = document.getElementById('current-orientation');
+        if (orientationDebug) {
+            orientationDebug.textContent = orientation;
+        }
+
+        // NEW: If the new orientation is the weather mode, trigger the auto-locate function.
+        if (currentMode === 'weather') {
+          autoLocateWeatherOnLoad();
+        }
+
+    }, 300); // 300ms debounce
+}
+
+// Function to call a single time at startup
+function initializeClockApp() {
+    // We don't need a separate call for orientation, as it will be called below by the
+    // event listener and the initial call onDOMContentLoaded will trigger it.
+    console.log('🚀 Clock app components initialized');
+    
+    // Initialize displays
+    updateCurrentTime();
+    updateStopwatchDisplay();
+    updateTimerDisplay();
+    
+    // Request notification permission
+    requestNotificationPermission();
+    
+    // Setup mobile optimizations
+    preventDefaultTouchBehaviors();
+    
+    // Setup input validation
+    setupInputValidation();
+
+    // FIX: Removed the old, complex event listener from the bottom of the file.
+    // Attach the new, clean handler directly to the button on initialization.
+    const autoLocateBtn = document.getElementById('auto-locate-btn');
+    if (autoLocateBtn) {
+        autoLocateBtn.addEventListener('click', handleAutoLocate);
+    }
+    
+    console.log('✅ Clock app initialization complete');
+
+    // ADDED: Call the orientation handler once at startup to set the initial mode
+    handleOrientationChange();
+
+    // Start fetching the current time every second
+    setInterval(updateCurrentTime, 1000);
+}
 // Initialize when DOM is ready (backup in case it's not called from HTML)
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeClockApp);
