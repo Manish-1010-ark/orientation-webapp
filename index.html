@@ -317,14 +317,8 @@
                     break;
                     
                 case 'weather-section':
-                    // Auto-fetch weather if not already loaded
-                    const weatherTemp = document.getElementById('weather-temp');
-                    if (weatherTemp && weatherTemp.textContent === '--°C') {
-                        // Auto-fetch weather for default city
-                        setTimeout(() => {
-                            fetchCurrentWeather();
-                        }, 500);
-                    }
+                    // No action is needed here anymore.
+                    // Weather fetching is now handled exclusively by user button clicks.
                     break;
             }
         }

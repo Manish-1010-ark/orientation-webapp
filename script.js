@@ -186,14 +186,14 @@ async function fetchWeatherByCoordinates(lat, lon) {
 }
 
 /**
- * Display weather data in the UI
+ * Display weather data in the UI.
  * @param {Object} data - Processed weather data
  */
 function displayWeatherData(data) {
-    // Call this once when your weather section is first shown:
-    requestGeolocationPermission();
+    // FIX: Removed the call to requestGeolocationPermission().
+    // This was the source of the premature permission prompt on mobile.
+    // Geolocation is now only requested on a direct user click.
 
-    // Define emojis here so both small and large icons can use them
     const weatherEmojis = {
         'Clear':       '☀️',
         'Clouds':      '☁️',
@@ -211,7 +211,7 @@ function displayWeatherData(data) {
         'Tornado':     '🌪️'
     };
 
-    // Update small display elements
+    // ... (rest of the function is unchanged)
     const tempEl      = document.getElementById('weather-temp');
     const condEl      = document.getElementById('weather-condition');
     const detailsEl   = document.getElementById('weather-details');
@@ -222,7 +222,6 @@ function displayWeatherData(data) {
     if (detailsEl) detailsEl.textContent = `${data.city}, ${data.country} • Feels like ${data.feelsLike}°C • Humidity ${data.humidity}%`;
     if (iconEl)    iconEl.textContent    = weatherEmojis[data.condition] || '🌤️';
 
-    // Build full weather card
     const weatherDiv = document.getElementById('weather');
     if (weatherDiv) {
         weatherDiv.innerHTML = `
@@ -242,22 +241,10 @@ function displayWeatherData(data) {
                 </div>
               </div>
               <div class="weather-details-grid">
-                <div class="detail-item">
-                  <div>Humidity</div>
-                  <div>${data.humidity}%</div>
-                </div>
-                <div class="detail-item">
-                  <div>Wind Speed</div>
-                  <div>${data.windSpeed} m/s</div>
-                </div>
-                <div class="detail-item">
-                  <div>Pressure</div>
-                  <div>${data.pressure} hPa</div>
-                </div>
-                <div class="detail-item">
-                  <div>Visibility</div>
-                  <div>${data.visibility} km</div>
-                </div>
+                <div class="detail-item"><div>Humidity</div><div>${data.humidity}%</div></div>
+                <div class="detail-item"><div>Wind Speed</div><div>${data.windSpeed} m/s</div></div>
+                <div class="detail-item"><div>Pressure</div><div>${data.pressure} hPa</div></div>
+                <div class="detail-item"><div>Visibility</div><div>${data.visibility} km</div></div>
               </div>
             </div>
         `;
@@ -927,7 +914,7 @@ function preventDefaultTouchBehaviors() {
 }
 
 /**
- * Initialize app components and event listeners
+ * Initialize app components and event listeners.
  */
 function initializeClockApp() {
     console.log('🚀 Clock app components initialized');
@@ -945,90 +932,79 @@ function initializeClockApp() {
     
     // Setup input validation
     setupInputValidation();
+
+    // FIX: Removed the old, complex event listener from the bottom of the file.
+    // Attach the new, clean handler directly to the button on initialization.
+    const autoLocateBtn = document.getElementById('auto-locate-btn');
+    if (autoLocateBtn) {
+        autoLocateBtn.addEventListener('click', handleAutoLocate);
+    }
     
     console.log('✅ Clock app initialization complete');
 }
 
-// ==================== GEO-PERMISSION & AUTO-LOCATE HANDLER ====================
-
 /**
- * Request Geolocation permission by making a silent getCurrentPosition call.
- * If the Permissions API is available, it checks state and only prompts if needed.
+ * Handles the click on the "Auto Locate" button.
+ * This function is now the single point of entry for geolocation.
  */
-function requestGeolocationPermission() {
-  if (!navigator.geolocation) {
-    console.warn('Geolocation not supported by this browser.');
-    return;
-  }
-
-  const tryPrompt = (timeout = 1000) => {
-    navigator.geolocation.getCurrentPosition(
-      () => console.log('📍 Geolocation permission granted.'),
-      (err) => console.log('📍 Geolocation permission denied or error:', err),
-      { timeout }
-    );
-  };
-
-  if (navigator.permissions) {
-    navigator.permissions
-      .query({ name: 'geolocation' })
-      .then(status => {
-        if (status.state === 'prompt') {
-          tryPrompt();
-        } else {
-          console.log(`📍 Geolocation permission already ${status.state}.`);
-        }
-      })
-      .catch(err => {
-        console.warn('Permissions API error:', err);
-        tryPrompt();
-      });
-  } else {
-    // Fallback: directly prompt
-    tryPrompt();
-  }
-}
-
-/**
- * Handles click on “Auto Locate” button.
- * Checks permission state, then fetches weather by coordinates.
- */
-document.getElementById('auto-locate-btn')?.addEventListener('click', () => {
+function handleAutoLocate() {
+  // First, check if geolocation is even supported by the browser.
   if (!navigator.geolocation) {
     displayWeatherError('Geolocation is not supported by your browser.');
+    console.warn('Geolocation not supported.');
     return;
   }
 
-  const doLocate = () => {
-    displayWeatherLoading();
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => fetchWeatherByCoordinates(coords.latitude, coords.longitude),
-      (err) => {
-        console.error('Geolocation error:', err);
-        const msg = (err.code === err.PERMISSION_DENIED)
-          ? 'Location permission denied.'
-          : 'Unable to retrieve your location.';
-        displayWeatherError(msg);
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-  };
-
-  if (navigator.permissions) {
-    navigator.permissions.query({ name: 'geolocation' }).then(status => {
-      if (status.state === 'granted' || status.state === 'prompt') {
-        doLocate();
-      } else {
-        displayWeatherError(
-          'Location permission has been denied. Please enable it in your browser settings.'
-        );
-      }
-    });
-  } else {
-    // Fallback if Permissions API not supported
-    doLocate();
+  // FIX: Added a rate-limit check consistent with the manual city search.
+  // This prevents spamming the API if the user clicks multiple times.
+  const now = Date.now();
+  if (now - lastWeatherFetch < 10000) {
+      displayWeatherError('Please wait before fetching weather again.');
+      return;
   }
-});
+  // We don't set lastWeatherFetch here, but in the actual fetch function to ensure it only updates on a successful attempt.
+
+  // Show a loading state to the user immediately.
+  displayWeatherLoading();
+  console.log('Attempting to get user location...');
+
+  // Call the Geolocation API.
+  navigator.geolocation.getCurrentPosition(
+    // SUCCESS CALLBACK
+    (position) => {
+      console.log('📍 Geolocation successful:', position.coords);
+      const { latitude, longitude } = position.coords;
+      // Pass the coordinates to the weather fetching function.
+      fetchWeatherByCoordinates(latitude, longitude);
+    },
+    // ERROR CALLBACK
+    (error) => {
+      console.error('❌ Geolocation error:', error);
+      let errorMessage = 'An unknown error occurred.';
+      
+      // FIX: Provide clear, user-friendly messages for each specific error code.
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          errorMessage = 'Location permission denied. Please enable it in your browser or OS settings.';
+          break;
+        case error.POSITION_UNAVAILABLE:
+          errorMessage = 'Location information is unavailable. Please check your network or GPS.';
+          break;
+        case error.TIMEOUT:
+          errorMessage = 'The request to get user location timed out. Please try again.';
+          break;
+      }
+      displayWeatherError(errorMessage);
+    },
+    // OPTIONS OBJECT
+    {
+      enableHighAccuracy: true, // Request a more precise location.
+      // FIX: Increased timeout to 30 seconds for better reliability on slow networks.
+      timeout: 30000, 
+      maximumAge: 0 // Don't use a cached position.
+    }
+  );
+}
 
 /**
  * Setup input validation for time inputs
