@@ -181,6 +181,21 @@
 
       <!-- ==================== WEATHER MODE (Landscape Left) ==================== -->
       <div id="weather-section" class="section">
+        <div class="display-area">
+          <div class="status-text">Weather of the Day</div>
+          <div class="weather-display">
+            <div class="weather-info">
+              <div class="weather-temp" id="weather-temp">--°C</div>
+              <div class="weather-condition" id="weather-condition">
+                Loading...
+              </div>
+              <div class="weather-details" id="weather-details">
+                Fetching weather data...
+              </div>
+            </div>
+            <div class="weather-icon" id="weather-icon">🌤️</div>
+          </div>
+        </div>
         <div id="weather" class="weather-card-container">
           <div
             style="
@@ -200,6 +215,24 @@
               Initializing weather data...
             </p>
           </div>
+        </div>
+        <div class="input-group">
+          <input
+            type="text"
+            class="city-input"
+            id="city-input"
+            placeholder="Enter city name"
+            value="Delhi"
+            autocomplete="off"
+          />
+        </div>
+        <div class="button-group">
+          <button class="btn btn-primary" id="fetch-weather-btn">
+            Get Weather
+          </button>
+          <button class="btn btn-warning" id="auto-locate-btn">
+            Auto Locate
+          </button>
         </div>
       </div>
     </div>
