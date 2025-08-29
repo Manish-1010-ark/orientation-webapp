@@ -353,13 +353,146 @@ function resetTimer() {
 // State variables for weather
 let lastWeatherFetch = 0;
 let currentWeatherData = null;
+let weatherInitialized = false;
 
 // OpenWeatherMap API Configuration
 const API_KEY = "cac2742bc47b7e2b506f0ae1f92d40ec";
 const BASE_URL = "https://api.openweathermap.org/data/2.5/weather";
 
 /**
- * Fetch weather by city name
+ * Weather emoji mapping
+ */
+const weatherEmojis = {
+  Clear: "☀️",
+  Clouds: "☁️",
+  Rain: "🌧️",
+  Drizzle: "🌦️",
+  Thunderstorm: "⛈️",
+  Snow: "🌨️",
+  Mist: "🌫️",
+  Fog: "🌫️",
+  Haze: "🌫️",
+  Dust: "💨",
+  Sand: "💨",
+  Ash: "💨",
+  Squall: "💨",
+  Tornado: "🌪️",
+};
+
+/**
+ * Display weather loading state - FIXED to always show loading UI
+ */
+function displayWeatherLoading() {
+  // Immediately set top compact display to loading state
+  const tempEl = document.getElementById("weather-temp");
+  const condEl = document.getElementById("weather-condition");
+  const detailsEl = document.getElementById("weather-details");
+  const iconEl = document.getElementById("weather-icon");
+
+  if (tempEl) tempEl.textContent = "--°C";
+  if (condEl) condEl.textContent = "Fetching weather data...";
+  if (detailsEl) detailsEl.textContent = "";
+  if (iconEl) iconEl.textContent = "🌤️";
+
+  // Main weather container: spinner + message
+  const weatherDiv = document.getElementById("weather");
+  if (weatherDiv) {
+    weatherDiv.innerHTML = `
+      <div class="loading-state">
+        <div class="loading-spinner" aria-hidden="true"></div>
+        <p>Loading weather information...</p>
+      </div>
+    `;
+  }
+
+  console.log("🔄 Weather loading state displayed");
+}
+
+/**
+ * Display weather error state - only called on actual errors
+ */
+function displayWeatherError(message = "Failed to fetch weather data") {
+  const tempEl = document.getElementById("weather-temp");
+  const condEl = document.getElementById("weather-condition");
+  const detailsEl = document.getElementById("weather-details");
+  const iconEl = document.getElementById("weather-icon");
+
+  if (tempEl) tempEl.textContent = "N/A";
+  if (condEl) condEl.textContent = message;
+  if (detailsEl) detailsEl.textContent = "";
+  if (iconEl) iconEl.textContent = "❌";
+
+  const weatherDiv = document.getElementById("weather");
+  if (weatherDiv) {
+    weatherDiv.innerHTML = `
+      <div class="error-state">
+        <p>${message}</p>
+        <button onclick="retryWeatherFetch()" class="retry-btn">Retry</button>
+      </div>
+    `;
+  }
+
+  console.log("❌ Weather error state displayed:", message);
+}
+
+/**
+ * Display weather data - successful state
+ */
+function displayWeatherData(data) {
+  // Defensive check
+  if (!data || !data.main) {
+    displayWeatherError("Invalid weather data");
+    return;
+  }
+
+  const headEl = document.getElementById("location");
+  const tempEl = document.getElementById("weather-temp");
+  const condEl = document.getElementById("weather-condition");
+  const detailsEl = document.getElementById("weather-details");
+  const iconEl = document.getElementById("weather-icon");
+
+  const tempC = Math.round(data.main.temp);
+  const condition =
+    data.weather && data.weather[0] && data.weather[0].main
+      ? data.weather[0].main
+      : "Unknown";
+  const description =
+    data.weather && data.weather[0] && data.weather[0].description
+      ? data.weather[0].description
+      : "";
+
+  if (headEl) headEl.textContent = data.name || "Unknown Location";
+  if (tempEl) tempEl.textContent = `${tempC}°C`;
+  if (condEl) condEl.textContent = condition;
+  if (detailsEl)
+    detailsEl.textContent = `${description} • Feels like ${Math.round(
+      data.main.feels_like
+    )}°C`;
+  if (iconEl) iconEl.textContent = weatherEmojis[condition] || "🌤️";
+
+  const weatherDiv = document.getElementById("weather");
+  if (weatherDiv) {
+    // Detailed card layout
+    weatherDiv.innerHTML = `
+        <div class="weather-card-main">
+          <div class="weather-card-temp">${tempC}°C</div>
+          <div class="weather-card-cond">${condition}</div>
+        </div>
+        <div class="weather-card-details">
+          <p>Humidity: ${data.main.humidity}%</p>
+          <p>Wind: ${data.wind ? data.wind.speed + " m/s" : "N/A"}</p>
+            <p>Pressure: ${data.main.pressure}</p>
+          <p>Visibility: ${data.visibility / 1000} Km</p>
+          <p class="weather-timestamp">Updated: ${new Date().toLocaleTimeString()}</p>
+        </div>
+    `;
+  }
+
+  console.log("✅ Weather data displayed successfully");
+}
+
+/**
+ * Fetch weather by city name - improved error handling
  */
 async function fetchWeather(cityName) {
   if (!cityName || typeof cityName !== "string") {
@@ -367,7 +500,7 @@ async function fetchWeather(cityName) {
     return null;
   }
 
-  // Rate limiting
+  // Rate limiting check
   const now = Date.now();
   if (now - lastWeatherFetch < 10000) {
     displayWeatherError("Please wait 10 seconds before fetching weather again");
@@ -375,6 +508,7 @@ async function fetchWeather(cityName) {
   }
   lastWeatherFetch = now;
 
+  // Always show loading state first
   displayWeatherLoading();
 
   try {
@@ -385,39 +519,43 @@ async function fetchWeather(cityName) {
     const response = await fetch(url);
 
     if (!response.ok) {
+      let errorMessage;
       switch (response.status) {
         case 401:
-          throw new Error("Invalid API key");
+          errorMessage = "Invalid API key";
+          break;
         case 404:
-          throw new Error("City not found");
+          errorMessage = "City not found";
+          break;
         case 429:
-          throw new Error("Rate limit exceeded");
+          errorMessage = "Rate limit exceeded";
+          break;
         default:
-          throw new Error(`Error: ${response.status}`);
+          errorMessage = `Error: ${response.status}`;
       }
+      throw new Error(errorMessage);
     }
 
     const weatherData = await response.json();
 
+    // Process the data for consistent display
     const processedData = {
-      city: weatherData.name,
-      country: weatherData.sys.country,
-      temperature: Math.round(weatherData.main.temp),
-      feelsLike: Math.round(weatherData.main.feels_like),
-      condition: weatherData.weather[0].main,
-      description: weatherData.weather[0].description,
-      humidity: weatherData.main.humidity,
-      windSpeed: Math.round(weatherData.wind.speed * 10) / 10,
-      pressure: weatherData.main.pressure,
-      visibility: weatherData.visibility
-        ? Math.round(weatherData.visibility / 1000)
-        : "N/A",
-      timestamp: new Date().toLocaleTimeString(),
+      main: {
+        temp: weatherData.main.temp,
+        humidity: weatherData.main.humidity,
+        feels_like: weatherData.main.feels_like,
+        pressure: weatherData.main.pressure,
+      },
+      weather: weatherData.weather,
+      name: weatherData.name,
+      wind: weatherData.wind,
+      sys: weatherData.sys,
+      visibility: weatherData.visibility,
     };
 
     currentWeatherData = processedData;
     displayWeatherData(processedData);
-    console.log("✅ Weather fetched:", processedData);
+    console.log("✅ Weather fetched for city:", cityName);
     return processedData;
   } catch (error) {
     console.error("❌ Weather fetch error:", error);
@@ -427,9 +565,10 @@ async function fetchWeather(cityName) {
 }
 
 /**
- * Fetch weather by coordinates
+ * Fetch weather by coordinates - improved error handling
  */
 async function fetchWeatherByCoordinates(lat, lon) {
+  // Always show loading state first
   displayWeatherLoading();
 
   try {
@@ -443,25 +582,24 @@ async function fetchWeatherByCoordinates(lat, lon) {
 
     const weatherData = await response.json();
 
+    // Process the data for consistent display
     const processedData = {
-      city: weatherData.name,
-      country: weatherData.sys.country,
-      temperature: Math.round(weatherData.main.temp),
-      feelsLike: Math.round(weatherData.main.feels_like),
-      condition: weatherData.weather[0].main,
-      description: weatherData.weather[0].description,
-      humidity: weatherData.main.humidity,
-      windSpeed: Math.round(weatherData.wind.speed * 10) / 10,
-      pressure: weatherData.main.pressure,
-      visibility: weatherData.visibility
-        ? Math.round(weatherData.visibility / 1000)
-        : "N/A",
-      timestamp: new Date().toLocaleTimeString(),
+      main: {
+        temp: weatherData.main.temp,
+        humidity: weatherData.main.humidity,
+        feels_like: weatherData.main.feels_like,
+        pressure: weatherData.main.pressure,
+      },
+      weather: weatherData.weather,
+      name: weatherData.name,
+      wind: weatherData.wind,
+      sys: weatherData.sys,
+      visibility: weatherData.visibility,
     };
 
     currentWeatherData = processedData;
     displayWeatherData(processedData);
-    console.log("✅ Weather fetched by location:", processedData);
+    console.log("✅ Weather fetched by coordinates:", lat, lon);
     return processedData;
   } catch (error) {
     console.error("❌ Location weather error:", error);
@@ -471,239 +609,46 @@ async function fetchWeatherByCoordinates(lat, lon) {
 }
 
 /**
- * Display weather data
- */
-function displayWeatherData(data) {
-  const weatherEmojis = {
-    Clear: "☀️",
-    Clouds: "☁️",
-    Rain: "🌧️",
-    Drizzle: "🌦️",
-    Thunderstorm: "⛈️",
-    Snow: "🌨️",
-    Mist: "🌫️",
-    Fog: "🌫️",
-    Haze: "🌫️",
-    Dust: "💨",
-    Sand: "💨",
-    Ash: "💨",
-    Squall: "💨",
-    Tornado: "🌪️",
-  };
-
-  /**
-   * Display weather loading state
-   */
-  function displayWeatherLoading() {
-    // Update top display area
-    const tempEl = document.getElementById("weather-temp");
-    const condEl = document.getElementById("weather-condition");
-    const detailsEl = document.getElementById("weather-details");
-    const iconEl = document.getElementById("weather-icon");
-
-    if (tempEl) tempEl.textContent = "--°C";
-    if (condEl) condEl.textContent = "Loading...";
-    if (detailsEl) detailsEl.textContent = "Fetching weather data...";
-    if (iconEl) iconEl.textContent = "🌤️";
-
-    // Update main weather container
-    const weatherDiv = document.getElementById("weather");
-    if (weatherDiv) {
-      weatherDiv.innerHTML = `
-                    <div class="loading-state">
-                        <div class="loading-spinner"></div>
-                        <p>Loading weather information...</p>
-                    </div>
-                `;
-    }
-  }
-
-  /**
-   * Display weather error state
-   */
-  function displayWeatherError(message = "Failed to fetch weather data") {
-    // Update top display area
-    const tempEl = document.getElementById("weather-temp");
-    const condEl = document.getElementById("weather-condition");
-    const detailsEl = document.getElementById("weather-details");
-    const iconEl = document.getElementById("weather-icon");
-
-    if (tempEl) tempEl.textContent = "N/A";
-    if (condEl) condEl.textContent = "Error";
-    if (detailsEl) detailsEl.textContent = "Unable to load weather data";
-    if (iconEl) iconEl.textContent = "❌";
-
-    // Update main weather container
-    const weatherDiv = document.getElementById("weather");
-    if (weatherDiv) {
-      weatherDiv.innerHTML = `
-                    <div class="error-state">
-                        <div style="font-size: 2rem; margin-bottom: 1rem;">⚠️</div>
-                        <p>${message}</p>
-                        <p style="font-size: 0.8rem; opacity: 0.7; margin-top: 0.5rem;">Please try again or check your connection</p>
-                    </div>
-                `;
-    }
-  }
-
-  /**
-   * Display weather data in unified container
-   */
-  function displayWeatherData(data) {
-    // Update top display area (compact info)
-    const tempEl = document.getElementById("weather-temp");
-    const condEl = document.getElementById("weather-condition");
-    const detailsEl = document.getElementById("weather-details");
-    const iconEl = document.getElementById("weather-icon");
-
-    if (tempEl) tempEl.textContent = `${data.temperature}°C`;
-    if (condEl) condEl.textContent = data.condition;
-    if (detailsEl)
-      detailsEl.textContent = `${data.city} • Feels like ${data.feelsLike}°C`;
-    if (iconEl) iconEl.textContent = weatherEmojis[data.condition] || "🌤️";
-
-    // Update main weather container (detailed info)
-    const weatherDiv = document.getElementById("weather");
-    if (weatherDiv) {
-      weatherDiv.innerHTML = `
-                    <div class="weather-card">
-                        <div class="weather-header">
-                            <h3>${data.city}, ${data.country}</h3>
-                            <p>Updated: ${data.timestamp}</p>
-                        </div>
-
-                        <div class="weather-main">
-                            <div class="temperature-info">
-                                <div class="temp-value">${
-                                  data.temperature
-                                }°C</div>
-                                <div class="feels-like">Feels like ${
-                                  data.feelsLike
-                                }°C</div>
-                                <div class="description">${
-                                  data.description
-                                }</div>
-                            </div>
-                            <div class="weather-icon-large">
-                                ${weatherEmojis[data.condition] || "🌤️"}
-                            </div>
-                        </div>
-
-                        <div class="weather-details-grid">
-                            <div class="detail-item">
-                                <div>Humidity</div>
-                                <div>${data.humidity}%</div>
-                            </div>
-                            <div class="detail-item">
-                                <div>Wind Speed</div>
-                                <div>${data.windSpeed} m/s</div>
-                            </div>
-                            <div class="detail-item">
-                                <div>Pressure</div>
-                                <div>${data.pressure} hPa</div>
-                            </div>
-                            <div class="detail-item">
-                                <div>Visibility</div>
-                                <div>${data.visibility} km</div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-    }
-  }
-}
-
-/**
- * Display weather loading state
- */
-function displayWeatherLoading() {
-  const weatherDiv = document.getElementById("weather");
-  if (weatherDiv) {
-    weatherDiv.innerHTML = `
-            <div style="text-align: center; padding: 2rem; color: rgba(255,255,255,0.7);">
-                <div class="loading-spinner" style="width: 30px; height: 30px; border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
-                <p>Loading weather data...</p>
-            </div>
-        `;
-  }
-
-  const tempEl = document.getElementById("weather-temp");
-  const condEl = document.getElementById("weather-condition");
-  const detailsEl = document.getElementById("weather-details");
-
-  if (tempEl) tempEl.textContent = "--°C";
-  if (condEl) condEl.textContent = "Loading...";
-  if (detailsEl) detailsEl.textContent = "Fetching weather data...";
-}
-
-/**
- * Display weather error
- */
-function displayWeatherError(message) {
-  const weatherDiv = document.getElementById("weather");
-  if (weatherDiv) {
-    weatherDiv.innerHTML = `
-            <div style="background: rgba(255, 65, 108, 0.1); border: 1px solid rgba(255, 65, 108, 0.3); color: #ff6b9d; padding: 1rem; border-radius: 0.75rem; text-align: center;">
-                <p><strong>⚠️ Error:</strong> ${message}</p>
-            </div>
-        `;
-  }
-
-  const tempEl = document.getElementById("weather-temp");
-  const condEl = document.getElementById("weather-condition");
-  const detailsEl = document.getElementById("weather-details");
-
-  if (tempEl) tempEl.textContent = "--°C";
-  if (condEl) condEl.textContent = "Error";
-  if (detailsEl) detailsEl.textContent = message;
-}
-
-/**
- * Request geolocation permission and fetch weather
+ * Request geolocation permission and fetch weather - improved UX
  */
 function requestGeolocationPermission() {
   if (!navigator.geolocation) {
-    displayWeatherError("Geolocation is not supported by your browser");
+    displayWeatherError("Geolocation not supported by this browser");
     return;
   }
 
+  // Show loading UI immediately
   displayWeatherLoading();
 
   navigator.geolocation.getCurrentPosition(
     (position) => {
-      const { latitude, longitude } = position.coords;
-      console.log("📍 Location obtained:", latitude, longitude);
-      fetchWeatherByCoordinates(latitude, longitude);
+      const { latitude: lat, longitude: lon } = position.coords;
+      console.log("📍 Geolocation obtained:", lat, lon);
+      fetchWeatherByCoordinates(lat, lon);
     },
     (error) => {
-      console.error("📍 Geolocation error:", error);
-      let message = "Location access denied";
-
+      console.warn("📍 Geolocation error:", error);
+      let errorMessage;
       switch (error.code) {
         case error.PERMISSION_DENIED:
-          message =
-            "Location access denied. Please enable location permissions.";
+          errorMessage = "Location access denied by user";
           break;
         case error.POSITION_UNAVAILABLE:
-          message = "Location information unavailable.";
+          errorMessage = "Location information unavailable";
           break;
         case error.TIMEOUT:
-          message = "Location request timed out.";
+          errorMessage = "Location request timed out";
+          break;
+        default:
+          errorMessage = "Unknown location error";
           break;
       }
-
-      displayWeatherError(message);
-
-      // Fallback to default city
-      setTimeout(() => {
-        console.log("📍 Falling back to default city: Durgapur");
-        fetchWeather("Durgapur");
-      }, 2000);
+      displayWeatherError(errorMessage);
     },
     {
       enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0,
+      timeout: 15000, // Increased timeout
+      maximumAge: 300000, // 5 minutes cache
     }
   );
 }
@@ -716,13 +661,66 @@ function fetchCurrentWeather() {
   if (!cityInput) return;
 
   const cityName = cityInput.value.trim();
-
   if (!cityName) {
     displayWeatherError("Please enter a city name");
     return;
   }
 
   fetchWeather(cityName);
+}
+
+/**
+ * Retry weather fetch - helper function for error state
+ */
+function retryWeatherFetch() {
+  const cityInput = document.getElementById("city-input");
+  const cityName = cityInput ? cityInput.value.trim() : "";
+
+  if (cityName) {
+    fetchWeather(cityName);
+  } else {
+    requestGeolocationPermission();
+  }
+}
+
+/**
+ * Initialize weather section - FIXED to always start with loading
+ */
+function initializeWeatherSection() {
+  // Always start with loading state when entering weather section
+  displayWeatherLoading();
+  weatherInitialized = true;
+
+  // Check if we have recent cached data (within 5 minutes)
+  const cacheValidTime = 300000; // 5 minutes
+  const hasRecentData =
+    currentWeatherData && Date.now() - lastWeatherFetch < cacheValidTime;
+
+  if (hasRecentData) {
+    // Show cached data after brief loading display
+    setTimeout(() => {
+      displayWeatherData(currentWeatherData);
+    }, 500);
+    return;
+  }
+
+  // Try city input first, then geolocation
+  const cityInput = document.getElementById("city-input");
+  const cityName = cityInput ? cityInput.value.trim() : "";
+
+  if (cityName) {
+    // Small delay to show loading state briefly
+    setTimeout(() => {
+      fetchWeather(cityName);
+    }, 300);
+  } else {
+    // Small delay to show loading state briefly
+    setTimeout(() => {
+      requestGeolocationPermission();
+    }, 300);
+  }
+
+  console.log("🌤️ Weather section initialized");
 }
 
 // ==================== ORIENTATION DETECTION AND SWITCHING ====================
@@ -794,7 +792,7 @@ function switchToSection(sectionId) {
 }
 
 /**
- * Initialize section-specific features
+ * Initialize section-specific features - FIXED weather initialization
  */
 function initializeSectionFeatures(sectionId) {
   switch (sectionId) {
@@ -811,11 +809,11 @@ function initializeSectionFeatures(sectionId) {
       break;
 
     case "weather-section":
-      // Only auto-locate if no weather data exists
-      if (!currentWeatherData) {
-        console.log("📍 Weather section activated, attempting auto-locate");
-        requestGeolocationPermission();
-      }
+      // Use the dedicated weather initialization function
+      initializeWeatherSection();
+      break;
+
+    default:
       break;
   }
 }
@@ -949,15 +947,21 @@ document.addEventListener("DOMContentLoaded", function () {
   // Initialize touch handling
   initializeTouchHandling();
 
-  // Setup weather button listeners
+  // Setup weather button listeners with improved UX
   const fetchWeatherBtn = document.getElementById("fetch-weather-btn");
   if (fetchWeatherBtn) {
-    fetchWeatherBtn.addEventListener("click", fetchCurrentWeather);
+    fetchWeatherBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      fetchCurrentWeather();
+    });
   }
 
   const autoLocateBtn = document.getElementById("auto-locate-btn");
   if (autoLocateBtn) {
-    autoLocateBtn.addEventListener("click", requestGeolocationPermission);
+    autoLocateBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      requestGeolocationPermission();
+    });
   }
 
   console.log("✅ App initialization complete");

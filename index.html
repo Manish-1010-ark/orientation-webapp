@@ -180,27 +180,24 @@
       </div>
 
       <!-- ==================== WEATHER MODE (Landscape Left) ==================== -->
-      <!-- Weather Section -->
       <div id="weather-section" class="section">
-        <!-- Top Display Area -->
-        <div class="display-area">
-          <div class="status-text">Weather of the Day</div>
-          <div class="weather-display">
-            <div class="weather-info">
-              <div class="weather-temp" id="weather-temp">--°C</div>
-              <div class="weather-condition" id="weather-condition">
-                Loading...
-              </div>
-              <div class="weather-details" id="weather-details">
-                Fetching weather data...
-              </div>
+        <!-- Top Compact Weather Display -->
+        <div class="weather-display">
+          <div class="weather-info">
+            <div class="weather-header" id="location">--</div>
+            <div class="weather-temp" id="weather-temp">--°C</div>
+            <div class="weather-condition" id="weather-condition">
+              Loading...
             </div>
-            <div class="weather-icon" id="weather-icon">🌤️</div>
+            <div class="weather-details" id="weather-details">
+              Fetching weather data...
+            </div>
           </div>
+          <div class="weather-icon" id="weather-icon">🌤️</div>
         </div>
 
-        <!-- Main Weather Container -->
-        <div id="weather" class="weather-card-container">
+        <!-- Main Weather Card -->
+        <div class="weather-card" id="weather">
           <div class="loading-state">
             <div class="loading-spinner"></div>
             <p>Initializing weather data...</p>
