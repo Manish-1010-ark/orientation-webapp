@@ -494,39 +494,47 @@ function displayWeatherData(data) {
   const weatherDiv = document.getElementById("weather");
   if (weatherDiv) {
     weatherDiv.innerHTML = `
-            <div class="weather-card">
-                <div class="weather-header">
-                    <h3>${data.city}, ${data.country}</h3>
-                    <p>Updated: ${data.timestamp}</p>
-                </div>
-                <div class="weather-main">
-                    <div class="temperature-info">
-                        <div class="temp-value">${data.temperature}°C</div>
-                        <div class="feels-like">Feels like ${
-                          data.feelsLike
-                        }°C</div>
-                        <div class="description">${data.description}</div>
-                    </div>
-                    <div class="weather-icon-large">
-                        ${weatherEmojis[data.condition] || "🌤️"}
-                    </div>
-                </div>
-                <div class="weather-details-grid">
-                    <div class="detail-item"><div>Humidity</div><div>${
-                      data.humidity
-                    }%</div></div>
-                    <div class="detail-item"><div>Wind Speed</div><div>${
-                      data.windSpeed
-                    } m/s</div></div>
-                    <div class="detail-item"><div>Pressure</div><div>${
-                      data.pressure
-                    } hPa</div></div>
-                    <div class="detail-item"><div>Visibility</div><div>${
-                      data.visibility
-                    } km</div></div>
-                </div>
-            </div>
-        `;
+      <div class="weather-card">
+        <div class="weather-header">
+          <h3>${data.city}, ${data.country}</h3>
+          <p>Updated: ${data.timestamp}</p>
+        </div>
+
+        <div class="weather-main">
+          <div class="temperature-info">
+            <div class="temp-value">${data.temperature}°C</div>
+            <div class="feels-like">Feels like ${data.feelsLike}°C</div>
+            <div class="description">${data.description}</div>
+          </div>
+          <div class="weather-icon-large">
+            ${weatherEmojis[data.condition] || "🌤️"}
+          </div>
+        </div>
+
+        <div class="weather-details-grid">
+          <div class="detail-item"><div>Humidity</div><div>${
+            data.humidity
+          }%</div></div>
+          <div class="detail-item"><div>Wind Speed</div><div>${
+            data.windSpeed
+          } m/s</div></div>
+          <div class="detail-item"><div>Pressure</div><div>${
+            data.pressure
+          } hPa</div></div>
+          <div class="detail-item"><div>Visibility</div><div>${
+            data.visibility
+          } km</div></div>
+        </div>
+
+        <div class="weather-inputs">
+          <input type="text" id="city-input" placeholder="Enter city" class="city-input" />
+          <div class="button-group">
+            <button class="btn btn-primary" id="fetch-weather-btn">Get Weather</button>
+            <button class="btn btn-primary" id="auto-locate-btn">Auto Locate</button>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   // Update status elements
