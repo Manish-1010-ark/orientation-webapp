@@ -465,9 +465,7 @@ function displayWeatherData(data) {
   if (tempEl) tempEl.textContent = `${tempC}°C`;
   if (condEl) condEl.textContent = condition;
   if (detailsEl)
-    detailsEl.textContent = `${description} • Feels like ${Math.round(
-      data.main.feels_like
-    )}°C`;
+    detailsEl.textContent = `Feels like ${Math.round(data.main.feels_like)}°C`;
   if (iconEl) iconEl.textContent = weatherEmojis[condition] || "🌤️";
 
   const weatherDiv = document.getElementById("weather");
@@ -476,7 +474,9 @@ function displayWeatherData(data) {
     weatherDiv.innerHTML = `
         <div class="weather-card-main">
           <div class="weather-card-temp">${tempC}°C</div>
-          <div class="weather-card-cond">${condition}</div>
+          <div class="weather-card-cond">${condition} ${
+      weatherEmojis[condition]
+    }</div>
         </div>
         <div class="weather-card-details">
           <p>Humidity: ${data.main.humidity}%</p>
