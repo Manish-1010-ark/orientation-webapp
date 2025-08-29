@@ -527,10 +527,10 @@ function displayWeatherData(data) {
         </div>
 
         <div class="weather-inputs">
-          <input type="text" id="city-input" placeholder="Enter city" class="city-input" />
+          <input type="text" id="city-input" placeholder="Enter city name" class="city-input" />
           <div class="button-group">
             <button class="btn btn-primary" id="fetch-weather-btn">Get Weather</button>
-            <button class="btn btn-primary" id="auto-locate-btn">Auto Locate</button>
+            <button class="btn btn-warning" id="auto-locate-btn">Auto Locate</button>
           </div>
         </div>
       </div>
