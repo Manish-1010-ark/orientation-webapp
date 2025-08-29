@@ -180,7 +180,9 @@
       </div>
 
       <!-- ==================== WEATHER MODE (Landscape Left) ==================== -->
+      <!-- Weather Section -->
       <div id="weather-section" class="section">
+        <!-- Top Display Area -->
         <div class="display-area">
           <div class="status-text">Weather of the Day</div>
           <div class="weather-display">
@@ -196,26 +198,16 @@
             <div class="weather-icon" id="weather-icon">🌤️</div>
           </div>
         </div>
+
+        <!-- Main Weather Container -->
         <div id="weather" class="weather-card-container">
-          <div
-            style="
-              background: rgba(255, 255, 255, 0.05);
-              padding: 1rem;
-              border-radius: 0.75rem;
-              border: 1px solid rgba(255, 255, 255, 0.1);
-            "
-          >
-            <p
-              style="
-                text-align: center;
-                color: rgba(255, 255, 255, 0.7);
-                margin: 0;
-              "
-            >
-              Initializing weather data...
-            </p>
+          <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>Initializing weather data...</p>
           </div>
         </div>
+
+        <!-- Input Group -->
         <div class="input-group">
           <input
             type="text"
@@ -226,6 +218,8 @@
             autocomplete="off"
           />
         </div>
+
+        <!-- Button Group -->
         <div class="button-group">
           <button class="btn btn-primary" id="fetch-weather-btn">
             Get Weather

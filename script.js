@@ -491,63 +491,126 @@ function displayWeatherData(data) {
     Tornado: "🌪️",
   };
 
-  const weatherDiv = document.getElementById("weather");
-  if (weatherDiv) {
-    weatherDiv.innerHTML = `
-      <div class="weather-card">
-        <div class="weather-header">
-          <h3>${data.city}, ${data.country}</h3>
-          <p>Updated: ${data.timestamp}</p>
-        </div>
+  /**
+   * Display weather loading state
+   */
+  function displayWeatherLoading() {
+    // Update top display area
+    const tempEl = document.getElementById("weather-temp");
+    const condEl = document.getElementById("weather-condition");
+    const detailsEl = document.getElementById("weather-details");
+    const iconEl = document.getElementById("weather-icon");
 
-        <div class="weather-main">
-          <div class="temperature-info">
-            <div class="temp-value">${data.temperature}°C</div>
-            <div class="feels-like">Feels like ${data.feelsLike}°C</div>
-            <div class="description">${data.description}</div>
-          </div>
-          <div class="weather-icon-large">
-            ${weatherEmojis[data.condition] || "🌤️"}
-          </div>
-        </div>
+    if (tempEl) tempEl.textContent = "--°C";
+    if (condEl) condEl.textContent = "Loading...";
+    if (detailsEl) detailsEl.textContent = "Fetching weather data...";
+    if (iconEl) iconEl.textContent = "🌤️";
 
-        <div class="weather-details-grid">
-          <div class="detail-item"><div>Humidity</div><div>${
-            data.humidity
-          }%</div></div>
-          <div class="detail-item"><div>Wind Speed</div><div>${
-            data.windSpeed
-          } m/s</div></div>
-          <div class="detail-item"><div>Pressure</div><div>${
-            data.pressure
-          } hPa</div></div>
-          <div class="detail-item"><div>Visibility</div><div>${
-            data.visibility
-          } km</div></div>
-        </div>
-
-        <div class="weather-inputs">
-          <input type="text" id="city-input" placeholder="Enter city name" class="city-input" />
-          <div class="button-group">
-            <button class="btn btn-primary" id="fetch-weather-btn">Get Weather</button>
-            <button class="btn btn-warning" id="auto-locate-btn">Auto Locate</button>
-          </div>
-        </div>
-      </div>
-    `;
+    // Update main weather container
+    const weatherDiv = document.getElementById("weather");
+    if (weatherDiv) {
+      weatherDiv.innerHTML = `
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p>Loading weather information...</p>
+                    </div>
+                `;
+    }
   }
 
-  // Update status elements
-  const tempEl = document.getElementById("weather-temp");
-  const condEl = document.getElementById("weather-condition");
-  const detailsEl = document.getElementById("weather-details");
-  const iconEl = document.getElementById("weather-icon");
+  /**
+   * Display weather error state
+   */
+  function displayWeatherError(message = "Failed to fetch weather data") {
+    // Update top display area
+    const tempEl = document.getElementById("weather-temp");
+    const condEl = document.getElementById("weather-condition");
+    const detailsEl = document.getElementById("weather-details");
+    const iconEl = document.getElementById("weather-icon");
 
-  if (tempEl) tempEl.textContent = `${data.temperature}°C`;
-  if (condEl) condEl.textContent = data.condition;
-  if (detailsEl)
-    detailsEl.textContent = `${data.city}, ${data.country} • Feels like ${data.feelsLike}°C • Humidity ${data.humidity}%`;
-  if (iconEl) iconEl.textContent = weatherEmojis[data.condition] || "🌤️";
+    if (tempEl) tempEl.textContent = "N/A";
+    if (condEl) condEl.textContent = "Error";
+    if (detailsEl) detailsEl.textContent = "Unable to load weather data";
+    if (iconEl) iconEl.textContent = "❌";
+
+    // Update main weather container
+    const weatherDiv = document.getElementById("weather");
+    if (weatherDiv) {
+      weatherDiv.innerHTML = `
+                    <div class="error-state">
+                        <div style="font-size: 2rem; margin-bottom: 1rem;">⚠️</div>
+                        <p>${message}</p>
+                        <p style="font-size: 0.8rem; opacity: 0.7; margin-top: 0.5rem;">Please try again or check your connection</p>
+                    </div>
+                `;
+    }
+  }
+
+  /**
+   * Display weather data in unified container
+   */
+  function displayWeatherData(data) {
+    // Update top display area (compact info)
+    const tempEl = document.getElementById("weather-temp");
+    const condEl = document.getElementById("weather-condition");
+    const detailsEl = document.getElementById("weather-details");
+    const iconEl = document.getElementById("weather-icon");
+
+    if (tempEl) tempEl.textContent = `${data.temperature}°C`;
+    if (condEl) condEl.textContent = data.condition;
+    if (detailsEl)
+      detailsEl.textContent = `${data.city} • Feels like ${data.feelsLike}°C`;
+    if (iconEl) iconEl.textContent = weatherEmojis[data.condition] || "🌤️";
+
+    // Update main weather container (detailed info)
+    const weatherDiv = document.getElementById("weather");
+    if (weatherDiv) {
+      weatherDiv.innerHTML = `
+                    <div class="weather-card">
+                        <div class="weather-header">
+                            <h3>${data.city}, ${data.country}</h3>
+                            <p>Updated: ${data.timestamp}</p>
+                        </div>
+
+                        <div class="weather-main">
+                            <div class="temperature-info">
+                                <div class="temp-value">${
+                                  data.temperature
+                                }°C</div>
+                                <div class="feels-like">Feels like ${
+                                  data.feelsLike
+                                }°C</div>
+                                <div class="description">${
+                                  data.description
+                                }</div>
+                            </div>
+                            <div class="weather-icon-large">
+                                ${weatherEmojis[data.condition] || "🌤️"}
+                            </div>
+                        </div>
+
+                        <div class="weather-details-grid">
+                            <div class="detail-item">
+                                <div>Humidity</div>
+                                <div>${data.humidity}%</div>
+                            </div>
+                            <div class="detail-item">
+                                <div>Wind Speed</div>
+                                <div>${data.windSpeed} m/s</div>
+                            </div>
+                            <div class="detail-item">
+                                <div>Pressure</div>
+                                <div>${data.pressure} hPa</div>
+                            </div>
+                            <div class="detail-item">
+                                <div>Visibility</div>
+                                <div>${data.visibility} km</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+    }
+  }
 }
 
 /**
