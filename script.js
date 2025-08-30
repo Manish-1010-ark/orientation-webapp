@@ -481,7 +481,7 @@ function displayWeatherData(data) {
         <div class="weather-card-details">
           <p>Humidity: ${data.main.humidity}%</p>
           <p>Wind: ${data.wind ? data.wind.speed + " m/s" : "N/A"}</p>
-            <p>Pressure: ${data.main.pressure}</p>
+          <p>Pressure: ${data.pressure} hPa</p>
           <p>Visibility: ${data.visibility / 1000} Km</p>
           <p class="weather-timestamp">Updated: ${new Date().toLocaleTimeString()}</p>
         </div>
